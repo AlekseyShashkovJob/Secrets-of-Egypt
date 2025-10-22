@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Z-1132 {CLEAR} Secrets of Egypt.slnx"
+    "dotnet.defaultSolution": "Z-1132_Secrets_of_Egypt_CLEAR.slnx"
 }
