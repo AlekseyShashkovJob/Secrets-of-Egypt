@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyAvE1fIwrbN4Q9AJwwXVJBwAw_FpimS9Wo</string>
+	<string>AIzaSyBY92qm0HNriTeKMpreowYV1EHJecNd374</string>
 	<key>GCM_SENDER_ID</key>
-	<string>466200846557</string>
+	<string>936252706556</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.rover.secretsofegypt</string>
 	<key>PROJECT_ID</key>
-	<string>secrets-of-egypt-bbbbf</string>
+	<string>secrets-of-egypt-f215f</string>
 	<key>STORAGE_BUCKET</key>
-	<string>secrets-of-egypt-bbbbf.firebasestorage.app</string>
+	<string>secrets-of-egypt-f215f.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:466200846557:ios:84f22e80207cdb249dbb34</string>
+	<string>1:936252706556:ios:54302d4e96623aa7bed179</string>
 </dict>
 </plist>

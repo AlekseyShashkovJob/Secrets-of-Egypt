@@ -1,20 +1,20 @@
 {
   "project_info": {
-    "project_number": "466200846557",
-    "project_id": "secrets-of-egypt-bbbbf",
-    "storage_bucket": "secrets-of-egypt-bbbbf.firebasestorage.app"
+    "project_number": "936252706556",
+    "project_id": "secrets-of-egypt-f215f",
+    "storage_bucket": "secrets-of-egypt-f215f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:466200846557:ios:84f22e80207cdb249dbb34",
+        "mobilesdk_app_id": "1:936252706556:ios:54302d4e96623aa7bed179",
         "android_client_info": {
           "package_name": "com.rover.secretsofegypt"
         }
       },
       "api_key": [
         {
-          "current_key": "AIzaSyAvE1fIwrbN4Q9AJwwXVJBwAw_FpimS9Wo"
+          "current_key": "AIzaSyBY92qm0HNriTeKMpreowYV1EHJecNd374"
         }
       ],
       "services": {
