@@ -15,7 +15,7 @@ class UniWebViewMethodChannel: AndroidJavaProxy {
         } else {
             UniWebViewLogger.Instance.Verbose("invokeChannelMethod invoked by native side. Name: " + name + " Method: " 
                                       + method + " Params: " + parameters);
-        return UniWebViewChannelMethodManager.Instance.InvokeMethod(name, method, parameters);
+            return UniWebViewChannelMethodManager.Instance.InvokeMethod(name, method, parameters);
         }
     }
 }
@@ -29,6 +29,10 @@ public class UniWebViewInterface {
         go.AddComponent<UniWebViewAndroidStaticListener>();
         plugin = new AndroidJavaClass("com.onevcat.uniwebview.UniWebViewInterface");
         
+        // Prepare dispatcher instance. Some callbacks may come from non-UI threads. Use this dispatcher to
+        // send any action to the Unity main thread.
+        _ = UniWebViewMainThreadDispatcher.Instance;
+
         CheckPlatform();
 
         plugin.CallStatic("prepare");
@@ -100,6 +104,11 @@ public class UniWebViewInterface {
     public static void SetTransform(string name, float rotation, float scaleX, float scaleY) {
         CheckPlatform();
         plugin.CallStatic("setTransform", name, rotation, scaleX, scaleY);
+    }
+
+    public static void SetRoundCornerRadius(string name, float topLeft, float topRight, float bottomLeft, float bottomRight) {
+        CheckPlatform();
+        plugin.CallStatic("setCornerRadius", name, topLeft, topRight, bottomLeft, bottomRight);
     }
 
     public static bool Show(string name, bool fade, int edge, float duration, bool useAsync, string identifier) {
@@ -403,6 +412,11 @@ public class UniWebViewInterface {
     public static void SetTransparencyClickingThroughEnabled(string name, bool enabled) {
         CheckPlatform();
         plugin.CallStatic("setTransparencyClickingThroughEnabled", name, enabled);
+    }
+
+    public static void RefreshTransparencyClickingThroughLayout(string name) {
+        CheckPlatform();
+        plugin.CallStatic("refreshTransparencyClickingThroughLayout", name);
     }
 
     public static void SetWebContentsDebuggingEnabled(bool enabled) {

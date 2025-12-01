@@ -1,12 +1,100 @@
+using System;
+using System.IO;
+using UnityEngine;
+using UnityEditor.Android;
+
+// Shared utilities for Android assets copying functionality
+static class UniWebViewAndroidAssetsHelper {
+
+    /// <summary>
+    /// Copies configured asset folders to Android assets directory
+    /// </summary>
+    /// <param name="assetFolders">Array of folder names relative to Assets directory</param>
+    /// <param name="targetAssetsPath">Target Android assets path</param>
+    public static void CopyConfiguredAssets(string[] assetFolders, string targetAssetsPath) {
+        if (assetFolders == null || assetFolders.Length == 0) {
+            return; // No folders configured, skip copying
+        }
+
+        Debug.Log("<UniWebView> Copying configured asset folders to Android assets...");
+
+        foreach (var folder in assetFolders) {
+            if (string.IsNullOrWhiteSpace(folder)) {
+                continue;
+            }
+
+            try {
+                // Source: Assets/folder (relative to Assets directory)
+                var sourceDir = Path.Combine(Application.dataPath, folder);
+
+                // Target: targetAssetsPath/folder (preserve relative path structure)
+                var targetDir = Path.Combine(targetAssetsPath, folder);
+
+                if (!Directory.Exists(sourceDir)) {
+                    Debug.LogWarning($"<UniWebView> Source folder not found: {sourceDir}");
+                    continue;
+                }
+
+                // Create target directory if it doesn't exist
+                var targetParent = Path.GetDirectoryName(targetDir);
+                if (!Directory.Exists(targetParent)) {
+                    Directory.CreateDirectory(targetParent);
+                }
+
+                // Remove existing target directory to ensure clean copy
+                if (Directory.Exists(targetDir)) {
+                    Directory.Delete(targetDir, true);
+                }
+
+                // Copy directory recursively
+                CopyDirectoryRecursively(sourceDir, targetDir);
+
+                Debug.Log($"<UniWebView> Successfully copied '{folder}' to Android assets");
+
+            } catch (Exception e) {
+                Debug.LogError($"<UniWebView> Failed to copy folder '{folder}': {e.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recursively copies directory contents, excluding Unity .meta files
+    /// </summary>
+    /// <param name="sourceDir">Source directory path</param>
+    /// <param name="targetDir">Target directory path</param>
+    public static void CopyDirectoryRecursively(string sourceDir, string targetDir) {
+        Directory.CreateDirectory(targetDir);
+
+        // Copy all files except .meta files
+        foreach (var file in Directory.GetFiles(sourceDir)) {
+            var fileName = Path.GetFileName(file);
+
+            // Skip Unity .meta files
+            if (fileName.EndsWith(".meta")) {
+                continue;
+            }
+
+            var targetFile = Path.Combine(targetDir, fileName);
+            File.Copy(file, targetFile, true);
+        }
+
+        // Copy all subdirectories recursively
+        foreach (var subDir in Directory.GetDirectories(sourceDir)) {
+            var subDirName = Path.GetFileName(subDir);
+            var targetSubDir = Path.Combine(targetDir, subDirName);
+            CopyDirectoryRecursively(subDir, targetSubDir);
+        }
+    }
+}
+
 // #if UNITY_2023_2_OR_NEWER
 #if UNIWEBVIEW_NEW_ANDROID_BUILD_SYSTEM
 
-using System;
 using System.Linq;
 using Unity.Android.Gradle;
 using Unity.Android.Gradle.Manifest;
 using UnityEditor.Android;
-using UnityEngine;
+using Application = UnityEngine.Application;
 using Action = Unity.Android.Gradle.Manifest.Action;
 
 class UniWebViewPostBuildModifier : AndroidProjectFilesModifier {
@@ -34,6 +122,7 @@ class UniWebViewPostBuildModifier : AndroidProjectFilesModifier {
         PatchUnityLibraryAndroidManifest(projectFiles.UnityLibraryManifest, settings);
         PatchUnityLibraryBuildGradle(projectFiles.UnityLibraryBuildGradle, settings);
         PatchGradleProperty(projectFiles.GradleProperties, settings);
+        CopyAndroidAssetsNew(projectFiles, settings);
     }
 
     private void PatchUnityLibraryAndroidManifest(
@@ -188,13 +277,14 @@ class UniWebViewPostBuildModifier : AndroidProjectFilesModifier {
             dependencies.AddDependencyImplementationRaw($"'{prefix}{version}'");
         }
     }
+
+    private void CopyAndroidAssetsNew(AndroidProjectFiles projectFiles, UniWebViewEditorSettingsReading settings) {
+        var targetPath = Path.Combine(projectFiles.UnityLibraryModule.ModuleDirectoryPath, "src", "main", "assets");
+        UniWebViewAndroidAssetsHelper.CopyConfiguredAssets(settings.androidAssetsFolders, targetPath);
+    }
 }
 
 #else
-using System;
-using System.IO;
-using UnityEditor.Android;
-using UnityEngine;
 
 class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
 {
@@ -204,6 +294,7 @@ class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
         PatchAndroidManifest(path);
         PatchBuildGradle(path);
         PatchGradleProperty(path);
+        CopyAndroidAssets(path);
     }
 
     private void PatchAndroidManifest(string root) {
@@ -329,6 +420,12 @@ class UniWebViewPostBuildProcessor : IPostGenerateGradleAndroidProject
         string[] compos = {root, "gradle.properties"};
         #endif
         return CombinePaths(compos);
+    }
+
+    private void CopyAndroidAssets(string projectPath) {
+        var settings = UniWebViewEditorSettings.GetOrCreateSettings();
+        var targetPath = Path.Combine(projectPath, "src", "main", "assets");
+        UniWebViewAndroidAssetsHelper.CopyConfiguredAssets(settings.androidAssetsFolders, targetPath);
     }
 }
 #endif

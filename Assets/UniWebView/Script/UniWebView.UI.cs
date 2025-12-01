@@ -65,6 +65,10 @@ public partial class UniWebView {
         UniWebViewInterface.SetFrame(listener.Name, (int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
     }
     
+    Rect UnmappedFrame() {
+        return referenceRectTransform != null ? referenceRectTransform.rect : frame;
+    }
+    
     Rect NextFrameRect() {
         if (referenceRectTransform == null) {
             UniWebViewLogger.Instance.Info("Using Frame setting to determine web view frame.");
@@ -167,6 +171,50 @@ public partial class UniWebView {
     /// </param>
     public void SetTransform(UniWebViewTransform transform) {
         UniWebViewInterface.SetTransform(listener.Name, transform.Rotation, transform.ScaleX, transform.ScaleY);
+    }
+
+    /// <summary>
+    /// Gets the current round corner radius applied to this web view.
+    /// </summary>
+    public UniWebViewCornerRadius CornerRadius => cornerRadius;
+
+    /// <summary>
+    /// Sets the same round corner radius value for all corners.
+    /// </summary>
+    /// <param name="radius">The radius applied to every corner.</param>
+    public void SetRoundCornerRadius(float radius) {
+        SetRoundCornerRadius(UniWebViewCornerRadius.Uniform(radius));
+    }
+
+    /// <summary>
+    /// Sets round corner radius values for each individual corner.
+    /// </summary>
+    /// <param name="topLeft">Radius at the top-left corner.</param>
+    /// <param name="topRight">Radius at the top-right corner.</param>
+    /// <param name="bottomLeft">Radius at the bottom-left corner.</param>
+    /// <param name="bottomRight">Radius at the bottom-right corner.</param>
+    public void SetRoundCornerRadius(
+        float topLeft,
+        float topRight,
+        float bottomLeft,
+        float bottomRight
+    ) {
+        SetRoundCornerRadius(new UniWebViewCornerRadius(topLeft, topRight, bottomLeft, bottomRight));
+    }
+
+    /// <summary>
+    /// Applies the provided round corner radius configuration to the native web view.
+    /// </summary>
+    /// <param name="radius">The corner radius definition.</param>
+    public void SetRoundCornerRadius(UniWebViewCornerRadius radius) {
+        cornerRadius = radius;
+        UniWebViewInterface.SetRoundCornerRadius(
+            listener.Name,
+            radius.TopLeft,
+            radius.TopRight,
+            radius.BottomLeft,
+            radius.BottomRight
+        );
     }
 
     /// <summary>
@@ -456,6 +504,28 @@ public partial class UniWebView {
     /// <param name="enabled">Whether the transparency clicking through feature should be enabled in this web view.</param>
     public void SetTransparencyClickingThroughEnabled(bool enabled) {
         UniWebViewInterface.SetTransparencyClickingThroughEnabled(listener.Name, enabled);
+    }
+
+    /// <summary>
+    /// Refreshes the transparency clicking through layout.
+    ///
+    /// Call this method when the web page content changes dynamically without triggering DOM mutations that the
+    /// automatic detection can observe. This manually triggers a re-collection of opaque regions marked with
+    /// `data-uv-transparency="opaque"` attributes.
+    ///
+    /// This is useful when:
+    /// - Content is updated programmatically without DOM changes
+    /// - Canvas or other dynamic rendering changes opacity
+    /// - You need to ensure the transparency regions are up-to-date
+    ///
+    /// This method only works when transparency clicking through is enabled. If the feature is not enabled,
+    /// calling this method does nothing.
+    /// </summary>
+    /// <remarks>
+    /// Available on both iOS and Android. Each platform refreshes the DOM-provided transparency mask immediately.
+    /// </remarks>
+    public void RefreshTransparencyClickingThroughLayout() {
+        UniWebViewInterface.RefreshTransparencyClickingThroughLayout(listener.Name);
     }
 
     /// <summary>

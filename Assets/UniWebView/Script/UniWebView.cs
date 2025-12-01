@@ -18,6 +18,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
+using UniWebViewExternal;
 
 /// <summary>
 /// Main class of UniWebView. Any `GameObject` instance with this script can represent a webview object in the scene. 
@@ -54,6 +55,7 @@ public partial class UniWebView: MonoBehaviour {
     private string id = Guid.NewGuid().ToString();
     private UniWebViewNativeListener listener;
     private ScreenOrientation currentOrientation;
+    private Rect currentUnmappedFrame;
 
     // Action callback holders
 
@@ -67,6 +69,7 @@ public partial class UniWebView: MonoBehaviour {
 
     private bool started;
     private bool backButtonEnabled = true;
+    private UniWebViewCornerRadius cornerRadius = UniWebViewCornerRadius.Zero;
 #endregion
 
 #region Unity Events
@@ -84,6 +87,10 @@ public partial class UniWebView: MonoBehaviour {
 
         UniWebViewInterface.Init(listener.Name, (int)rect.x, (int)rect. y, (int)rect.width, (int)rect.height);
         currentOrientation = Screen.orientation;
+        currentUnmappedFrame = UnmappedFrame();
+        
+        // Register channel message handler
+        RegisterChannelMessageHandler();
     }
 
     void Start() {
@@ -107,14 +114,27 @@ public partial class UniWebView: MonoBehaviour {
 
     void Update() {
         var newOrientation = Screen.orientation;
+        var needUpdateFrame = false;
         if (currentOrientation != newOrientation) {
             currentOrientation = newOrientation;
             if (OnOrientationChanged != null) {
                 OnOrientationChanged(this, newOrientation);
             }
             if (referenceRectTransform != null) {
-                UpdateFrame();
+                needUpdateFrame = true;
             }
+        }
+        
+        // The case that the screen size changes but the orientation does not change.
+        // (Fold screen expanding, for example)
+        var nextUnmappedFrame = UnmappedFrame();
+        if (!currentUnmappedFrame.Equals(nextUnmappedFrame)) {
+            currentUnmappedFrame = nextUnmappedFrame;
+            needUpdateFrame = true;
+        }
+        
+        if (needUpdateFrame) {
+            UpdateFrame();
         }
 
         // Only the new input system is enabled. Related flags: https://docs.unity3d.com/Packages/com.unity.inputsystem@1.0/manual/Installation.html#enabling-the-new-input-backends
@@ -129,7 +149,7 @@ public partial class UniWebView: MonoBehaviour {
         #endif
 
         if (backDetected) {
-            UniWebViewLogger.Instance.Info("Received Back button, handling GoBack or close web view.");
+            UniWebViewLogger.Instance.Info(() => "Received Back button, handling GoBack or close web view.");
             if (CanGoBack) {
                 GoBack();
             } else {
@@ -621,6 +641,106 @@ public partial class UniWebView: MonoBehaviour {
             listener.Name, 
             UniWebViewChannelMethod.RequestMediaCapturePermission
         );
+    }
+    
+    // Register channel message handler
+    private void RegisterChannelMessageHandler() {
+        object Func(object obj) => HandleChannelMessage((UniWebViewChannelMessage)obj);
+        UniWebViewChannelMethodManager.Instance.RegisterChannelMethod(
+            listener.Name,
+            UniWebViewChannelMethod.ChannelMessage,
+            Func
+        );
+    }
+    
+    // Handle incoming channel messages
+    private UniWebViewChannelMessageResponse HandleChannelMessage(UniWebViewChannelMessage rawMessage) {
+        
+        // Create message with respond delegate for async responses
+        var message = new UniWebViewChannelMessage(
+            rawMessage.id,
+            rawMessage.timestamp,
+            rawMessage.action,
+            rawMessage.data,
+            rawMessage.messageType,
+            SendChannelMessageResponseInternal
+        );
+        
+        UniWebViewChannelMessageResponse response = null;
+
+        // Log message type for debugging
+        UniWebViewLogger.Instance.Debug(() => $"Processing {message.MessageType} message for action '{message.action}'");
+
+        if (OnChannelMessageReceived != null) {
+            try {
+                response = OnChannelMessageReceived(this, message);
+
+                // Validate response consistency with message type
+                ValidateMessageResponse(message, response);
+            } catch (System.Exception e) {
+                UniWebViewLogger.Instance.Critical(() => $"Error in channel message handler: {e.Message}");
+                response = UniWebViewChannelMessageResponse.Error("Handler execution failed: " + e.Message);
+            }
+        }
+
+        return response;
+    }
+
+    // Validates that the response is appropriate for the message type
+    private void ValidateMessageResponse(UniWebViewChannelMessage message, UniWebViewChannelMessageResponse response) {
+        switch (message.MessageType) {
+            case UniWebViewChannelMessageType.Send:
+                if (response != null) {
+                    UniWebViewLogger.Instance.Warning(() => $"Send message '{message.action}' returned a response, but Send messages should return null (fire-and-forget)");
+                }
+                break;
+
+            case UniWebViewChannelMessageType.Call:
+                if (response == null) {
+                    UniWebViewLogger.Instance.Warning(() => $"Call message '{message.action}' returned null, but Call messages should return a response for immediate return to JavaScript");
+                }
+                break;
+
+            case UniWebViewChannelMessageType.Request:
+                // Request messages should always return null and use message.Respond() for async responses
+                if (response != null) {
+                    UniWebViewLogger.Instance.Warning(() => $"Request message '{message.action}' returned a response, but Request messages should return null and use message.Respond() for async responses");
+                } else {
+                    UniWebViewLogger.Instance.Debug(() => $"Request message '{message.action}' will respond later via message.Respond()");
+                }
+                break;
+        }
+    }
+
+    // Internal method for async responses (called by UniWebViewChannelMessage.Respond)
+    internal void SendChannelMessageResponseInternal(string messageId, UniWebViewChannelMessageResponse response) {
+        try {
+            // Escape the messageId to prevent XSS
+            var escapedMessageId = messageId.Replace("'", "\\'").Replace("\"", "\\\"");
+
+            string responseString;
+            var errorFlag = response.hasError ? "true" : "false";
+
+            if (response.hasError) {
+                // For error responses, use JSON serialization (supports structured error objects)
+                responseString = UniWebViewJsonUtility.ToJson(response.errorData);
+            } else {
+                // For success responses, use JSON serialization
+                responseString = UniWebViewJsonUtility.ToJson(response.data);
+            }
+
+            var js = $"window.uniwebview._handleResponse('{escapedMessageId}', {responseString}, {errorFlag});";
+
+            EvaluateJavaScript(js, (payload) => {
+                if (payload.resultCode.Equals("0")) {
+                    UniWebViewLogger.Instance.Debug(() => "Channel message response sent successfully");
+                } else {
+                    UniWebViewLogger.Instance.Critical(() => $"Failed to send channel message response: {payload.data}");
+                }
+            });
+        } catch (System.Exception e) {
+            UniWebViewLogger.Instance.Critical(() => $"Failed to send async response: {e.Message}");
+        }
     }
 #endregion
 

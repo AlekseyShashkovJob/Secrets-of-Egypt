@@ -241,6 +241,23 @@ public partial class UniWebView {
     /// or by a invocation of `close()` on the page.
     /// </summary>
     public event MultipleWindowClosedDelegate OnMultipleWindowClosed;
+
+    /// <summary>
+    /// Delegate for channel message received event.
+    /// </summary>
+    /// <param name="webView">The web view component which raises this event.</param>
+    /// <param name="message">The channel message received from JavaScript Bridge.</param>
+    /// <returns>A response object that will be sent back to JavaScript. For sync calls, this is the immediate response. For async calls that don't need a response, this can be null.</returns>
+    public delegate UniWebViewChannelMessageResponse ChannelMessageReceivedDelegate(UniWebView webView, UniWebViewChannelMessage message);
+    /// <summary>
+    /// Raised when a channel message from JavaScript Bridge is received.
+    /// 
+    /// This event is triggered when JavaScript code calls window.uniwebview.send(),
+    /// window.uniwebview.call(), or window.uniwebview.request(). The handler should
+    /// return a UniWebViewChannelMessageResponse for sync calls or when immediate response
+    /// is needed. For async messages that need delayed response, use message.Respond() method.
+    /// </summary>
+    public event ChannelMessageReceivedDelegate OnChannelMessageReceived;
     
 
     /* //////////////////////////////////////////////////////

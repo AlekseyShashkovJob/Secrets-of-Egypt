@@ -30,6 +30,9 @@ public class UniWebViewInterface {
     static UniWebViewInterface() {
         ConnectMessageSender();
         RegisterChannel();
+        // Prepare dispatcher instance. Some callbacks may come from non-UI threads. Use this dispatcher to
+        // send any action to the Unity main thread.
+        _ = UniWebViewMainThreadDispatcher.Instance;
     }
 
     delegate void UnitySendMessageDelegate(IntPtr objectName, IntPtr methodName, IntPtr parameter);
@@ -124,16 +127,14 @@ public class UniWebViewInterface {
         string name = Marshal.PtrToStringAuto(namePtr);
         string method = Marshal.PtrToStringAuto(methodPtr);
         string parameters = Marshal.PtrToStringAuto(parameterPtr);
-
-        // Shortcut for global channel method.
+        
         if (name == GlobalChannelIdentifier) {
-            UniWebViewLogger.Instance.Verbose(
+            UniWebViewLogger.Instance.Verbose( () => 
                 "Global channel method invoked. Method: " + method + " Params: " + parameters
             );
             return UniWebViewStaticListener.InvokeStaticMethod(method, parameters);
         } else {
-            UniWebViewLogger.Instance.Verbose("ChannelFunc invoked by native side. Name: " + name + " Method: " 
-                                              + method + " Params: " + parameters);
+            UniWebViewLogger.Instance.Verbose(() => $"ChannelFunc invoked by native side. Name: {name} Method: $method Params: {parameters}");
             return UniWebViewChannelMethodManager.Instance.InvokeMethod(name, method, parameters);   
         }
     }
@@ -223,6 +224,13 @@ public class UniWebViewInterface {
     public static void SetTransform(string name, float rotation, float scaleX, float scaleY) {
         CheckPlatform();
         uv_setTransform(name, rotation, scaleX, scaleY);
+    }
+
+    [DllImport(DllLib)]
+    private static extern void uv_setRoundCornerRadius(string name, float topLeft, float topRight, float bottomLeft, float bottomRight);
+    public static void SetRoundCornerRadius(string name, float topLeft, float topRight, float bottomLeft, float bottomRight) {
+        CheckPlatform();
+        uv_setRoundCornerRadius(name, topLeft, topRight, bottomLeft, bottomRight);
     }
 
     [DllImport(DllLib)]
@@ -615,6 +623,13 @@ public class UniWebViewInterface {
     public static void SetTransparencyClickingThroughEnabled(string name, bool enabled) {
         CheckPlatform();
         uv_setTransparencyClickingThroughEnabled(name, enabled);
+    }
+
+    [DllImport(DllLib)]
+    private static extern void uv_refreshTransparencyClickingThroughLayout(string name);
+    public static void RefreshTransparencyClickingThroughLayout(string name) {
+        CheckPlatform();
+        uv_refreshTransparencyClickingThroughLayout(name);
     }
 
     [DllImport(DllLib)]

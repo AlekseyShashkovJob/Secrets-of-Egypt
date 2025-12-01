@@ -18,6 +18,7 @@ public class UniWebViewInterface {
     public static void SetPosition(string name, int x, int y) { CheckPlatform(); }
     public static void SetSize(string name, int width, int height) { CheckPlatform(); }
     public static void SetTransform(string name, float rotation, float scaleX, float scaleY) { CheckPlatform(); }
+    public static void SetRoundCornerRadius(string name, float topLeft, float topRight, float bottomLeft, float bottomRight) { CheckPlatform(); }
     public static bool Show(string name, bool fade, int edge, float duration, bool useAsync, string identifier) { CheckPlatform(); return false; }
     public static bool Hide(string name, bool fade, int edge, float duration, bool useAsync, string identifier) { CheckPlatform(); return false; }
     public static bool AnimateTo(string name, int x, int y, int width, int height, float duration, float delay, string identifier) { CheckPlatform(); return false; }
@@ -77,6 +78,7 @@ public class UniWebViewInterface {
     public static void SetToolbarTextColor(string name, float r, float g, float b) { CheckPlatform(); }
     public static void SetUserInteractionEnabled(string name, bool enabled) { CheckPlatform(); }
     public static void SetTransparencyClickingThroughEnabled(string name, bool enabled) { CheckPlatform(); }
+    public static void RefreshTransparencyClickingThroughLayout(string name) { CheckPlatform(); }
     public static void SetWebContentsDebuggingEnabled(bool enabled) { CheckPlatform(); }
     public static void SetAllowHTTPAuthPopUpWindow(string name, bool flag) { CheckPlatform(); }
     public static void SetAllowUserEditFileNameBeforeDownloading(string name, bool allowed) { CheckPlatform(); }
